@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/tyler-smith/assert"
-	"github.com/tyler-smith/go-bip39/wordlists"
+	"github.com/zhuqicn/go-bip39/wordlists"
+	"golang.org/x/text/language"
 )
 
 type vector struct {
@@ -17,29 +18,44 @@ type vector struct {
 }
 
 func TestGetWordList(t *testing.T) {
-	assertEqualStringsSlices(t, wordlists.English, GetWordList())
+	assertEqualStringsSlices(t, wordlists.English, GetWordList(language.English))
 }
 
 func TestGetWordIndex(t *testing.T) {
-	for expectedIdx, word := range wordList {
-		actualIdx, ok := GetWordIndex(word)
+	for expectedIdx, word := range wordLists[language.English] {
+		actualIdx, ok := GetWordIndex(word, language.English)
 		assert.True(t, ok)
 		assertEqual(t, actualIdx, expectedIdx)
 	}
 
 	for _, word := range []string{"a", "set", "of", "invalid", "words"} {
-		actualIdx, ok := GetWordIndex(word)
+		actualIdx, ok := GetWordIndex(word, language.English)
 		assert.False(t, ok)
 		assertEqual(t, actualIdx, 0)
 	}
 }
 
 func TestNewMnemonic(t *testing.T) {
+	AddSupportedLanguage(language.SimplifiedChinese)
 	for _, vector := range testVectors() {
 		entropy, err := hex.DecodeString(vector.entropy)
 		assert.Nil(t, err)
 
-		mnemonic, err := NewMnemonic(entropy)
+		mnemonic, err := NewMnemonic(entropy, language.English)
+		assert.Nil(t, err)
+		assert.EqualString(t, vector.mnemonic, mnemonic)
+
+		_, err = NewSeedWithErrorChecking(mnemonic, "TREZOR")
+		assert.Nil(t, err)
+
+		seed := NewSeed(mnemonic, "TREZOR")
+		assert.EqualString(t, vector.seed, hex.EncodeToString(seed))
+	}
+	for _, vector := range testNonEnglishVectors() {
+		entropy, err := hex.DecodeString(vector.entropy)
+		assert.Nil(t, err)
+
+		mnemonic, err := NewMnemonic(entropy, language.SimplifiedChinese)
 		assert.Nil(t, err)
 		assert.EqualString(t, vector.mnemonic, mnemonic)
 
@@ -52,7 +68,7 @@ func TestNewMnemonic(t *testing.T) {
 }
 
 func TestNewMnemonicInvalidEntropy(t *testing.T) {
-	_, err := NewMnemonic([]byte{})
+	_, err := NewMnemonic([]byte{}, language.English)
 	assert.NotNil(t, err)
 }
 
@@ -64,6 +80,7 @@ func TestNewSeedWithErrorCheckingInvalidMnemonics(t *testing.T) {
 }
 
 func TestIsMnemonicValid(t *testing.T) {
+	AddSupportedLanguage(language.SimplifiedChinese)
 	for _, vector := range badMnemonicSentences() {
 		assert.False(t, IsMnemonicValid(vector.mnemonic))
 	}
@@ -74,6 +91,7 @@ func TestIsMnemonicValid(t *testing.T) {
 }
 
 func TestMnemonicToByteArrayWithRawIsEqualToEntropyFromMnemonic(t *testing.T) {
+	AddSupportedLanguage(language.SimplifiedChinese)
 	for _, vector := range testVectors() {
 		rawEntropy, err := MnemonicToByteArray(vector.mnemonic, true)
 		assert.Nil(t, err)
@@ -127,7 +145,7 @@ func TestMnemonicToByteArrayForDifferentArrayLengths(t *testing.T) {
 			t.Errorf("Wrong number of bytes read: %d", n)
 		}
 
-		mnemonic, err := NewMnemonic(seed)
+		mnemonic, err := NewMnemonic(seed, language.English)
 		if err != nil {
 			t.Errorf("%v", err)
 		}
@@ -196,7 +214,7 @@ func TestMnemonicToByteArrayForZeroLeadingSeeds(t *testing.T) {
 	} {
 		seed, _ := hex.DecodeString(m)
 
-		mnemonic, err := NewMnemonic(seed)
+		mnemonic, err := NewMnemonic(seed, language.English)
 		if err != nil {
 			t.Errorf("%v", err)
 		}
@@ -248,7 +266,7 @@ func testEntropyFromMnemonic(t *testing.T, bitSize int) {
 		assert.Nil(t, err)
 		assert.True(t, len(expectedEntropy) != 0)
 
-		mnemonic, err := NewMnemonic(expectedEntropy)
+		mnemonic, err := NewMnemonic(expectedEntropy, language.English)
 		assert.Nil(t, err)
 		assert.True(t, len(mnemonic) != 0)
 
@@ -379,6 +397,15 @@ func testVectors() []vector {
 			entropy:  "15da872c95a13dd738fbf50e427583ad61f18fd99f628c417a61cf8343c90419",
 			mnemonic: "beyond stage sleep clip because twist token leaf atom beauty genius food business side grid unable middle armed observe pair crouch tonight away coconut",
 			seed:     "b15509eaa2d09d3efd3e006ef42151b30367dc6e3aa5e44caba3fe4d3e352e65101fbdb86a96776b91946ff06f8eac594dc6ee1d3e82a42dfe1b40fef6bcc3fd",
+		},
+	}
+}
+func testNonEnglishVectors() []vector {
+	return []vector{
+		{
+			entropy:  "15da872c95a13dd738fbf50e427583ad61f18fd99f628c417a61cf8343c90419",
+			mnemonic: "情 韩 貌 科 此 飘 杰 横 前 命 普 混 干 肩 欢 烷 愈 当 朗 柱 约 叙 与 温",
+			seed:     "01204593c1558eb4701c18c476c5fa27cd8076bd218a11d848a87417a7012b02404320b132f891c8ea9108a366a6ab383ce2958d9a426d1474a1fbdade6e9ce9",
 		},
 	}
 }

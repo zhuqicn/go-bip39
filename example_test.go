@@ -4,7 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/tyler-smith/go-bip39"
+	"github.com/zhuqicn/go-bip39"
+	"golang.org/x/text/language"
 )
 
 func ExampleNewMnemonic() {
@@ -14,7 +15,7 @@ func ExampleNewMnemonic() {
 	entropy, _ := hex.DecodeString("066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad")
 
 	// generate a mnemomic
-	mnemomic, _ := bip39.NewMnemonic(entropy)
+	mnemomic, _ := bip39.NewMnemonic(entropy, language.English)
 	fmt.Println(mnemomic)
 	// output:
 	// all hour make first leader extend hole alien behind guard gospel lava path output census museum junior mass reopen famous sing advance salt reform
